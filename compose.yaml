@@ -1,0 +1,9 @@
+services:
+  postgresql:
+    image: postgres:17.2
+    environment:
+      POSTGRES_DB: cshort
+      POSTGRES_USER: cshort
+      POSTGRES_PASSWORD: cshort
+    ports:
+      - "5432:5432"

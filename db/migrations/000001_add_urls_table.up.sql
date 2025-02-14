@@ -1,0 +1,5 @@
+CREATE TABLE urls
+(
+    id  VARCHAR PRIMARY KEY,
+    url VARCHAR NOT NULL
+);

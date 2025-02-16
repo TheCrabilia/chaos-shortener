@@ -7,13 +7,15 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/TheCrabilia/chaos-shortener/internal/monitoring"
-	"github.com/TheCrabilia/chaos-shortener/internal/shortener"
+	"github.com/TheCrabilia/chaos-shortener/internal/server/chaos"
+	"github.com/TheCrabilia/chaos-shortener/internal/server/monitoring"
+	"github.com/TheCrabilia/chaos-shortener/internal/server/shortener"
 )
 
 type Handlers struct {
 	shortener *shortener.Shortener
 	metrics   *monitoring.Metrics
+	injector  *chaos.Injector
 	log       *slog.Logger
 }
 
@@ -53,26 +55,20 @@ func WithHandlerName(name string, h http.Handler) http.Handler {
 	})
 }
 
-func NewHandlers(shortener *shortener.Shortener, metrics *monitoring.Metrics) *Handlers {
+func NewHandlers(shortener *shortener.Shortener, metrics *monitoring.Metrics, injector *chaos.Injector) *Handlers {
 	return &Handlers{
 		shortener: shortener,
 		metrics:   metrics,
-		log:       slog.With("component", "api"),
+		injector:  injector,
+		log:       slog.With("component", "handler"),
 	}
-}
-
-type ShortenRequest struct {
-	URL string `json:"url"`
-}
-
-type ShortenResponse struct {
-	ShortURL string `json:"short_url"`
 }
 
 func (h *Handlers) ShortenURL() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req ShortenRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			h.log.Error("failed to decode request", "error", err)
 			h.metrics.ErrorsTotal.WithLabelValues("shorten", "bad_request").Inc()
 			errorJSON(w, "invalid request body", http.StatusBadRequest)
 			return
@@ -123,5 +119,44 @@ func (h *Handlers) RedirectURL() http.Handler {
 		h.metrics.RedirectsTotal.Inc()
 
 		http.Redirect(w, r, origURL, http.StatusFound)
+	})
+}
+
+func (h *Handlers) ConfigureInjector() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req InjectorRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			h.log.Error("failed to decode request", "error", err)
+			h.metrics.ErrorsTotal.WithLabelValues("injector", "bad_request").Inc()
+			errorJSON(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		h.injector.SetLatencyRate(req.LatencyRate)
+		h.injector.SetErrorRate(req.ErrorRate)
+		h.injector.SetOutageRate(req.OutageRate)
+		slog.Info(
+			"injector configured",
+			"latency_rate",
+			req.LatencyRate,
+			"error_rate",
+			req.ErrorRate,
+			"outage_rate",
+			req.OutageRate,
+		)
+
+		resp := InjectorResponse{
+			LatencyRate: h.injector.GetLatencyRate(),
+			ErrorRate:   h.injector.GetErrorRate(),
+			OutageRate:  h.injector.GetOutageRate(),
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(&resp); err != nil {
+			h.log.Error("failed to encode response", "error", err)
+			h.metrics.ErrorsTotal.WithLabelValues("injector", "response_encoding").Inc()
+			errorJSON(w, "failed to configure injector", http.StatusInternalServerError)
+			return
+		}
 	})
 }

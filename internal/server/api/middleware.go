@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/TheCrabilia/chaos-shortener/internal/chaos"
-	"github.com/TheCrabilia/chaos-shortener/internal/monitoring"
+	"github.com/TheCrabilia/chaos-shortener/internal/server/chaos"
+	"github.com/TheCrabilia/chaos-shortener/internal/server/monitoring"
 )
 
 type ResponseWriter struct {
@@ -72,11 +72,9 @@ func NewChaosMiddleware(injector *chaos.Injector) func(http.Handler) http.Handle
 				case chaos.FailureTypeError:
 					injector.InjectError(w)
 					return
-				case chaos.FailureTypeConnDrop:
-					w.(*ResponseWriter).StatusCode = http.StatusBadGateway
-					injector.InjectConnDrop(w)
 				case chaos.FailureTypeOutage:
-					injector.InjectOutage()
+					injector.InjectOutage(w)
+					return
 				}
 			}
 

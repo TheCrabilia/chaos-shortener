@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -12,50 +11,33 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/TheCrabilia/chaos-shortener/internal/api"
-	"github.com/TheCrabilia/chaos-shortener/internal/chaos"
-	"github.com/TheCrabilia/chaos-shortener/internal/db"
-	"github.com/TheCrabilia/chaos-shortener/internal/monitoring"
-	"github.com/TheCrabilia/chaos-shortener/internal/shortener"
+	"github.com/TheCrabilia/chaos-shortener/internal/server/api"
+	"github.com/TheCrabilia/chaos-shortener/internal/server/chaos"
+	"github.com/TheCrabilia/chaos-shortener/internal/server/db"
+	"github.com/TheCrabilia/chaos-shortener/internal/server/monitoring"
+	"github.com/TheCrabilia/chaos-shortener/internal/server/shortener"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/justinas/alice"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-var (
-	latencyRate  float64
-	errorRate    float64
-	connDropRate float64
-	outageRate   float64
-)
-
 func main() {
-	flag.Float64Var(&latencyRate, "latency-rate", 0, "rate of latency injection")
-	flag.Float64Var(&errorRate, "error-rate", 0, "rate of error injection")
-	flag.Float64Var(&connDropRate, "conn-drop-rate", 0, "rate of connection drop injection")
-	flag.Float64Var(&outageRate, "outage-rate", 0, "rate of outage injection")
-
-	flag.Parse()
+	ctx := context.Background()
 
 	metrics := monitoring.NewMetrics()
 	injector := chaos.NewInjector()
 
-	injector.SetLatencyRate(latencyRate)
-	injector.SetErrorRate(errorRate)
-	injector.SetConnDropRate(connDropRate)
-	injector.SetOutageRate(outageRate)
-
-	conn, err := pgx.Connect(context.Background(), os.Getenv("CSHORT_DATABASE"))
-	if err != nil {
-		panic(err)
+	databaseURL := os.Getenv("CSHORT_DATABASE")
+	if databaseURL == "" {
+		panic("CSHORT_DATABASE is required")
 	}
 
 	m, err := migrate.New(
 		fmt.Sprintf("file://%s", os.Getenv("CSHORT_MIGRATIONS_PATH")),
-		os.Getenv("CSHORT_DATABASE"),
+		databaseURL,
 	)
 	if err != nil {
 		panic(err)
@@ -70,9 +52,23 @@ func main() {
 		slog.Info("Migrations applied successfully")
 	}
 
-	db := db.New(conn)
+	poolConfig, err := pgxpool.ParseConfig(databaseURL)
+	if err != nil {
+		panic(err)
+	}
+
+	poolConfig.MaxConns = 100
+	poolConfig.MaxConnLifetime = time.Minute * 5
+	poolConfig.HealthCheckPeriod = time.Second * 30
+
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	db := db.New(pool)
 	shortener := shortener.NewShortener(db)
-	handlers := api.NewHandlers(shortener, metrics)
+	handlers := api.NewHandlers(shortener, metrics, injector)
 
 	stdChain := alice.New(
 		api.NewLoggingMiddleware(slog.With("component", "api"), metrics),
@@ -88,6 +84,7 @@ func main() {
 		"GET /r/{id}",
 		api.WithHandlerName("redirect", stdChain.Then(handlers.RedirectURL())),
 	)
+	mux.Handle("POST /chaos", handlers.ConfigureInjector())
 	mux.Handle("/metrics", promhttp.Handler())
 
 	server := &http.Server{
@@ -103,7 +100,7 @@ func main() {
 		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 		<-sigChan
 
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
 
 		if err := server.Shutdown(ctx); err != nil {

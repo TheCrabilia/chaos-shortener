@@ -1,9 +1,8 @@
 package chaos
 
 import (
-	"log/slog"
+	"fmt"
 	"math/rand"
-	"net"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -98,24 +97,28 @@ func (i *Injector) failureRate() float64 {
 }
 
 func (i *Injector) InjectLatency() {
-	l := time.Duration(rand.Int63n(int64(i.maxLatency)))
-	time.Sleep(l)
+	delay := time.Duration(rand.Int63n(int64(i.maxLatency)))
+
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+
+	<-timer.C
 }
 
 func (i *Injector) InjectError(w http.ResponseWriter) {
-	http.Error(w, "chaos error", http.StatusInternalServerError)
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, `{"message": "injected error"}`)
 }
 
 func (i *Injector) InjectConnDrop(w http.ResponseWriter) {
-	conn, _, err := w.(http.Hijacker).Hijack()
-	if err != nil {
-		slog.Error("failed to hijack connection", "error", err)
-	}
-
-	conn.(*net.TCPConn).SetLinger(0)
-	conn.Close()
+	w.WriteHeader(http.StatusBadGateway)
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, `{"message": "injected connection drop"}`)
 }
 
-func (i *Injector) InjectOutage() {
-	time.Sleep(time.Second * 30)
+func (i *Injector) InjectOutage(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusServiceUnavailable)
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, `{"message": "injected service unavailable"}`)
 }

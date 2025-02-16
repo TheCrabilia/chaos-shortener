@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/TheCrabilia/chaos-shortener/internal/db"
+	"github.com/TheCrabilia/chaos-shortener/internal/server/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )

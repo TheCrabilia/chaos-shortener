@@ -1,5 +1,5 @@
 [tools]
-go = "1.23"
+go = "1.24"
 air = "1.61.7"
 "aqua:sqlc-dev/sqlc" = "1.28.0"
 "aqua:golang-migrate/migrate" = "4.18.2"

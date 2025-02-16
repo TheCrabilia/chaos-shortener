@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -15,6 +17,9 @@ import (
 	"github.com/TheCrabilia/chaos-shortener/internal/db"
 	"github.com/TheCrabilia/chaos-shortener/internal/monitoring"
 	"github.com/TheCrabilia/chaos-shortener/internal/shortener"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5"
 	"github.com/justinas/alice"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -46,6 +51,23 @@ func main() {
 	conn, err := pgx.Connect(context.Background(), os.Getenv("CSHORT_DATABASE"))
 	if err != nil {
 		panic(err)
+	}
+
+	m, err := migrate.New(
+		fmt.Sprintf("file://%s", os.Getenv("CSHORT_MIGRATIONS_PATH")),
+		os.Getenv("CSHORT_DATABASE"),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	if err := m.Up(); err != nil {
+		if !errors.Is(err, migrate.ErrNoChange) {
+			panic(err)
+		}
+		slog.Info("No migrations to apply")
+	} else {
+		slog.Info("Migrations applied successfully")
 	}
 
 	db := db.New(conn)

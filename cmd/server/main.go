@@ -24,6 +24,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+const (
+	DBPoolMaxConns          = 100
+	DBPoolMaxConnLifetime   = time.Minute * 5
+	DBPoolHealthCheckPeriod = time.Second * 30
+)
+
 func main() {
 	ctx := context.Background()
 
@@ -57,9 +63,9 @@ func main() {
 		panic(err)
 	}
 
-	poolConfig.MaxConns = 100
-	poolConfig.MaxConnLifetime = time.Minute * 5
-	poolConfig.HealthCheckPeriod = time.Second * 30
+	poolConfig.MaxConns = DBPoolMaxConns
+	poolConfig.MaxConnLifetime = DBPoolMaxConnLifetime
+	poolConfig.HealthCheckPeriod = DBPoolHealthCheckPeriod
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {

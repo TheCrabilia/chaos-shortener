@@ -10,6 +10,9 @@ import (
 
 	"github.com/TheCrabilia/chaos-shortener/internal/server/chaos"
 	"github.com/TheCrabilia/chaos-shortener/internal/server/monitoring"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
 type ResponseWriter struct {
@@ -44,8 +47,15 @@ func NewLoggingMiddleware(logger *slog.Logger, metrics *monitoring.Metrics) func
 				handlerName = name.(string)
 			}
 
-			metrics.RequestDuration.WithLabelValues(handlerName, r.Method, rw.statusCodeString()).
-				Observe(end)
+			metrics.RequestDuration.Record(
+				r.Context(),
+				end,
+				metric.WithAttributes(
+					attribute.String("handler", handlerName),
+					semconv.HTTPRequestMethodOriginal(r.Method),
+					semconv.HTTPResponseStatusCode(rw.StatusCode),
+				),
+			)
 
 			logger.Info(
 				"request",

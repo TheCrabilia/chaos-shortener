@@ -10,6 +10,8 @@ import (
 	"github.com/TheCrabilia/chaos-shortener/internal/server/chaos"
 	"github.com/TheCrabilia/chaos-shortener/internal/server/monitoring"
 	"github.com/TheCrabilia/chaos-shortener/internal/server/shortener"
+	"go.opentelemetry.io/otel/metric"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
 type Handlers struct {
@@ -69,13 +71,21 @@ func (h *Handlers) ShortenURL() http.Handler {
 		var req ShortenRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			h.log.Error("failed to decode request", "error", err)
-			h.metrics.ErrorsTotal.WithLabelValues("shorten", "bad_request").Inc()
+			h.metrics.ErrorsTotal.Add(
+				r.Context(),
+				1,
+				metric.WithAttributes(semconv.HTTPResponseStatusCode(http.StatusBadRequest)),
+			)
 			errorJSON(w, "invalid request body", http.StatusBadRequest)
 			return
 		}
 
 		if req.URL == "" {
-			h.metrics.ErrorsTotal.WithLabelValues("shorten", "bad_request").Inc()
+			h.metrics.ErrorsTotal.Add(
+				r.Context(),
+				1,
+				metric.WithAttributes(semconv.HTTPResponseStatusCode(http.StatusBadRequest)),
+			)
 			errorJSON(w, "url is required", http.StatusBadRequest)
 			return
 		}
@@ -83,13 +93,17 @@ func (h *Handlers) ShortenURL() http.Handler {
 		shortURL, err := h.shortener.Shorten(r.Context(), fullURL(r), req.URL)
 		if err != nil {
 			h.log.Error("failed to create shortened url", "error", err)
-			h.metrics.ErrorsTotal.WithLabelValues("shorten", "shortening").Inc()
+			h.metrics.ErrorsTotal.Add(
+				r.Context(),
+				1,
+				metric.WithAttributes(semconv.HTTPResponseStatusCode(http.StatusInternalServerError)),
+			)
 			errorJSON(w, "failed to shorten url", http.StatusInternalServerError)
 			return
 		}
 
 		h.log.Info("shortened", "url", req.URL, "short_url", shortURL)
-		h.metrics.URLsCreated.Inc()
+		h.metrics.URLsCreated.Add(r.Context(), 1)
 
 		resp := ShortenResponse{
 			ShortURL: shortURL,
@@ -98,7 +112,11 @@ func (h *Handlers) ShortenURL() http.Handler {
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(&resp); err != nil {
 			h.log.Error("failed to encode response", "error", err)
-			h.metrics.ErrorsTotal.WithLabelValues("shorten", "response_encoding").Inc()
+			h.metrics.ErrorsTotal.Add(
+				r.Context(),
+				1,
+				metric.WithAttributes(semconv.HTTPResponseStatusCode(http.StatusInternalServerError)),
+			)
 			errorJSON(w, "failed to shorten url", http.StatusInternalServerError)
 			return
 		}
@@ -111,12 +129,16 @@ func (h *Handlers) RedirectURL() http.Handler {
 		origURL, err := h.shortener.RedirectURL(r.Context(), id)
 		if err != nil {
 			h.log.Error("failed to get original url", "error", err)
-			h.metrics.ErrorsTotal.WithLabelValues("redirect", "getting_url").Inc()
+			h.metrics.ErrorsTotal.Add(
+				r.Context(),
+				1,
+				metric.WithAttributes(semconv.HTTPResponseStatusCode(http.StatusInternalServerError)),
+			)
 			return
 		}
 
 		h.log.Info("redirecting", "url", fullURL(r)+r.URL.Path, "redirect_url", origURL)
-		h.metrics.RedirectsTotal.Inc()
+		h.metrics.RedirectsTotal.Add(r.Context(), 1)
 
 		http.Redirect(w, r, origURL, http.StatusFound)
 	})
@@ -127,7 +149,11 @@ func (h *Handlers) ConfigureInjector() http.Handler {
 		var req InjectorRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			h.log.Error("failed to decode request", "error", err)
-			h.metrics.ErrorsTotal.WithLabelValues("injector", "bad_request").Inc()
+			h.metrics.ErrorsTotal.Add(
+				r.Context(),
+				1,
+				metric.WithAttributes(semconv.HTTPResponseStatusCode(http.StatusBadRequest)),
+			)
 			errorJSON(w, "invalid request body", http.StatusBadRequest)
 			return
 		}
@@ -154,7 +180,11 @@ func (h *Handlers) ConfigureInjector() http.Handler {
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(&resp); err != nil {
 			h.log.Error("failed to encode response", "error", err)
-			h.metrics.ErrorsTotal.WithLabelValues("injector", "response_encoding").Inc()
+			h.metrics.ErrorsTotal.Add(
+				r.Context(),
+				1,
+				metric.WithAttributes(semconv.HTTPResponseStatusCode(http.StatusInternalServerError)),
+			)
 			errorJSON(w, "failed to configure injector", http.StatusInternalServerError)
 			return
 		}

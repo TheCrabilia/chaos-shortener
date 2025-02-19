@@ -13,9 +13,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Build and push
-        uses: pmorelli92/github-container-registry-build-push@2.1.0
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
         with:
-          github-push-secret: ${{secrets.GITHUB_TOKEN}}
-          docker-image-name: chaos-shortener
+          registry: ghcr.io/thecrabilia
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: |
+            ghcr.io/thecrabilia/chaos-shortener:latest

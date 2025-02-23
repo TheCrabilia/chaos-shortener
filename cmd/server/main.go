@@ -58,8 +58,13 @@ func main() {
 
 	databaseURL := fmt.Sprintf("postgresql://%s:%s@%s:5432/%s?sslmode=disable", dbUser, dbPass, dbHost, dbName)
 
+	migrationsPath := os.Getenv("CSHORT_MIGRATIONS_PATH")
+	if migrationsPath == "" {
+		migrationsPath = "db/migrations"
+	}
+
 	m, err := migrate.New(
-		fmt.Sprintf("file://%s", os.Getenv("CSHORT_MIGRATIONS_PATH")),
+		fmt.Sprintf("file://%s", migrationsPath),
 		databaseURL,
 	)
 	if err != nil {

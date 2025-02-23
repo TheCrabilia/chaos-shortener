@@ -113,7 +113,8 @@ func main() {
 		api.WithHandlerName("redirect", stdChain.Then(handlers.RedirectURL())),
 	)
 	mux.Handle("POST /chaos", handlers.ConfigureInjector())
-	mux.Handle("/metrics", promhttp.Handler())
+	mux.Handle("GET /healthz", handlers.Health())
+	mux.Handle("GET /metrics", promhttp.Handler())
 
 	server := &http.Server{
 		Addr:         ":8080",

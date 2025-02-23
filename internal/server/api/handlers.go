@@ -190,3 +190,10 @@ func (h *Handlers) ConfigureInjector() http.Handler {
 		}
 	})
 }
+
+func (h *Handlers) Health() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status": "ok"}`))
+	})
+}

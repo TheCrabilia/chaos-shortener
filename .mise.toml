@@ -3,3 +3,17 @@ go = "1.24"
 air = "1.61.7"
 "aqua:sqlc-dev/sqlc" = "1.28.0"
 "aqua:golang-migrate/migrate" = "4.18.2"
+
+[tasks."tf:init"]
+dir = "infra"
+run = "tofu init"
+
+[tasks."tf:apply"]
+dir = "infra"
+run = "tofu apply"
+depends = "tf:init"
+
+[tasks."tf:destroy"]
+dir = "infra"
+run = "tofu destroy"
+depends = "tf:init"

@@ -36,10 +36,27 @@ func main() {
 	metrics := monitoring.NewMetrics()
 	injector := chaos.NewInjector()
 
-	databaseURL := os.Getenv("CSHORT_DATABASE")
-	if databaseURL == "" {
-		panic("CSHORT_DATABASE is required")
+	dbHost := os.Getenv("CSHORT_DB_HOST")
+	if dbHost == "" {
+		panic("CSHORT_DB_HOST is required")
 	}
+
+	dbName := os.Getenv("CSHORT_DB_NAME")
+	if dbName == "" {
+		panic("CSHORT_DB_NAME is required")
+	}
+
+	dbUser := os.Getenv("CSHORT_DB_USERNAME")
+	if dbUser == "" {
+		panic("CSHORT_DB_USERNAME is required")
+	}
+
+	dbPass := os.Getenv("CSHORT_DB_PASSWORD")
+	if dbPass == "" {
+		panic("CSHORT_DB_PASSWORD is required")
+	}
+
+	databaseURL := fmt.Sprintf("postgresql://%s:%s@%s:5432/%s?sslmode=disable", dbUser, dbPass, dbHost, dbName)
 
 	m, err := migrate.New(
 		fmt.Sprintf("file://%s", os.Getenv("CSHORT_MIGRATIONS_PATH")),

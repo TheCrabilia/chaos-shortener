@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "chaos-shortener.fullname" . }}
+  labels:
+    {{- include "chaos-shortener.labels" . | nindent 4 }}
+spec:
+  endpoints:
+    - interval: 30s
+      targetPort: 8080
+      path: /metrics
+  namespaceSelector:
+    matchNames:
+      - chaos-shortener
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: chaos-shortener

@@ -39,19 +39,19 @@ func NewMetrics() *Metrics {
 	meter := otel.Meter("cshort")
 
 	m.RequestDuration, _ = meter.Float64Histogram(
-		"http_request_duration_seconds",
+		"shortener_http_request_duration_seconds",
 		metric.WithDescription("Duration of HTTP requests"),
 		metric.WithUnit("s"),
 		metric.WithExplicitBucketBoundaries(.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10),
 	)
 
 	m.RequestsTotal, _ = meter.Float64Counter(
-		"http_requests_total",
+		"shortener_http_requests_total",
 		metric.WithDescription("Total number of HTTP requests"),
 	)
 
 	m.ErrorsTotal, _ = meter.Float64Counter(
-		"http_errors_total",
+		"shortener_http_errors_total",
 		metric.WithDescription("Total number of HTTP errors"),
 	)
 

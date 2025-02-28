@@ -1,3 +1,9 @@
+locals {
+  default_ns_labels = {
+    monitoring = "enabled"
+  }
+}
+
 variable "cp_host" {
   type = string
 }

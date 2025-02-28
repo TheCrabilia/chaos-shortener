@@ -4,14 +4,16 @@ metadata:
   name: {{ include "chaos-shortener.fullname" . }}
   labels:
     {{- include "chaos-shortener.labels" . | nindent 4 }}
+    release: kube-prometheus-stack
 spec:
   endpoints:
-    - interval: 30s
-      targetPort: 8080
+    - interval: 10s
+      targetPort: http
       path: /metrics
+      scheme: http
   namespaceSelector:
     matchNames:
-      - chaos-shortener
+      - {{ .Release.Namespace }}
   selector:
     matchLabels:
-      app.kubernetes.io/instance: chaos-shortener
+      {{- include "chaos-shortener.selectorLabels" . | nindent 6 }}

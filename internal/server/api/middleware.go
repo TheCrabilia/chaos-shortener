@@ -1,10 +1,8 @@
 package api
 
 import (
-	"bufio"
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
 	"time"
 
@@ -23,10 +21,6 @@ type ResponseWriter struct {
 func (w *ResponseWriter) WriteHeader(code int) {
 	w.StatusCode = code
 	w.ResponseWriter.WriteHeader(code)
-}
-
-func (w *ResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return w.ResponseWriter.(http.Hijacker).Hijack()
 }
 
 func (w *ResponseWriter) statusCodeString() string {
@@ -52,7 +46,14 @@ func NewLoggingMiddleware(logger *slog.Logger, metrics *monitoring.Metrics) func
 				end,
 				metric.WithAttributes(
 					attribute.String("handler", handlerName),
-					semconv.HTTPRequestMethodOriginal(r.Method),
+				),
+			)
+
+			metrics.ResponsesStatus.Add(
+				r.Context(),
+				1,
+				metric.WithAttributes(
+					attribute.String("handler", handlerName),
 					semconv.HTTPResponseStatusCode(rw.StatusCode),
 				),
 			)

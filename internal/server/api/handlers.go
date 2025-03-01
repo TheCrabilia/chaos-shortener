@@ -3,15 +3,12 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 
 	"github.com/TheCrabilia/chaos-shortener/internal/server/chaos"
 	"github.com/TheCrabilia/chaos-shortener/internal/server/monitoring"
 	"github.com/TheCrabilia/chaos-shortener/internal/server/shortener"
-	"go.opentelemetry.io/otel/metric"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
 type Handlers struct {
@@ -22,32 +19,6 @@ type Handlers struct {
 }
 
 type handlerNameKey struct{}
-
-func errorJSON(w http.ResponseWriter, msg string, code int) {
-	h := w.Header()
-	h.Del("Content-Length")
-
-	h.Set("Content-Type", "application/json")
-	h.Set("X-Content-Type-Options", "nosniff")
-
-	error := struct {
-		Msg string `json:"message"`
-	}{
-		Msg: msg,
-	}
-
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(&error)
-}
-
-func fullURL(r *http.Request) string {
-	schema := "http"
-	if r.URL.Scheme != "" {
-		schema = r.URL.Scheme
-	}
-
-	return fmt.Sprintf("%s://%s", schema, r.Host)
-}
 
 func WithHandlerName(name string, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -71,21 +42,11 @@ func (h *Handlers) ShortenURL() http.Handler {
 		var req ShortenRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			h.log.Error("failed to decode request", "error", err)
-			h.metrics.ErrorsTotal.Add(
-				r.Context(),
-				1,
-				metric.WithAttributes(semconv.HTTPResponseStatusCode(http.StatusBadRequest)),
-			)
 			errorJSON(w, "invalid request body", http.StatusBadRequest)
 			return
 		}
 
 		if req.URL == "" {
-			h.metrics.ErrorsTotal.Add(
-				r.Context(),
-				1,
-				metric.WithAttributes(semconv.HTTPResponseStatusCode(http.StatusBadRequest)),
-			)
 			errorJSON(w, "url is required", http.StatusBadRequest)
 			return
 		}
@@ -93,11 +54,6 @@ func (h *Handlers) ShortenURL() http.Handler {
 		shortURL, err := h.shortener.Shorten(r.Context(), fullURL(r), req.URL)
 		if err != nil {
 			h.log.Error("failed to create shortened url", "error", err)
-			h.metrics.ErrorsTotal.Add(
-				r.Context(),
-				1,
-				metric.WithAttributes(semconv.HTTPResponseStatusCode(http.StatusInternalServerError)),
-			)
 			errorJSON(w, "failed to shorten url", http.StatusInternalServerError)
 			return
 		}
@@ -112,11 +68,6 @@ func (h *Handlers) ShortenURL() http.Handler {
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(&resp); err != nil {
 			h.log.Error("failed to encode response", "error", err)
-			h.metrics.ErrorsTotal.Add(
-				r.Context(),
-				1,
-				metric.WithAttributes(semconv.HTTPResponseStatusCode(http.StatusInternalServerError)),
-			)
 			errorJSON(w, "failed to shorten url", http.StatusInternalServerError)
 			return
 		}
@@ -129,11 +80,6 @@ func (h *Handlers) RedirectURL() http.Handler {
 		origURL, err := h.shortener.RedirectURL(r.Context(), id)
 		if err != nil {
 			h.log.Error("failed to get original url", "error", err)
-			h.metrics.ErrorsTotal.Add(
-				r.Context(),
-				1,
-				metric.WithAttributes(semconv.HTTPResponseStatusCode(http.StatusInternalServerError)),
-			)
 			return
 		}
 
@@ -149,11 +95,6 @@ func (h *Handlers) ConfigureInjector() http.Handler {
 		var req InjectorRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			h.log.Error("failed to decode request", "error", err)
-			h.metrics.ErrorsTotal.Add(
-				r.Context(),
-				1,
-				metric.WithAttributes(semconv.HTTPResponseStatusCode(http.StatusBadRequest)),
-			)
 			errorJSON(w, "invalid request body", http.StatusBadRequest)
 			return
 		}
@@ -180,11 +121,6 @@ func (h *Handlers) ConfigureInjector() http.Handler {
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(&resp); err != nil {
 			h.log.Error("failed to encode response", "error", err)
-			h.metrics.ErrorsTotal.Add(
-				r.Context(),
-				1,
-				metric.WithAttributes(semconv.HTTPResponseStatusCode(http.StatusInternalServerError)),
-			)
 			errorJSON(w, "failed to configure injector", http.StatusInternalServerError)
 			return
 		}

@@ -13,12 +13,9 @@ import (
 
 type Metrics struct {
 	RequestDuration metric.Float64Histogram
-	RequestsTotal   metric.Float64Counter
-	ErrorsTotal     metric.Float64Counter
+	ResponsesStatus metric.Float64Counter
 	URLsCreated     metric.Float64Counter
 	RedirectsTotal  metric.Float64Counter
-
-	exporter *prometheus.Exporter
 }
 
 func NewMetrics() *Metrics {
@@ -29,7 +26,6 @@ func NewMetrics() *Metrics {
 		slog.Error("failed to create Prometheus exporter", "error", err)
 		os.Exit(1)
 	}
-	m.exporter = exporter
 
 	provider := sdkmetric.NewMeterProvider(
 		sdkmetric.WithReader(exporter),
@@ -39,20 +35,15 @@ func NewMetrics() *Metrics {
 	meter := otel.Meter("cshort")
 
 	m.RequestDuration, _ = meter.Float64Histogram(
-		"shortener_http_request_duration_seconds",
+		"http_request_duration_seconds",
 		metric.WithDescription("Duration of HTTP requests"),
 		metric.WithUnit("s"),
 		metric.WithExplicitBucketBoundaries(.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10),
 	)
 
-	m.RequestsTotal, _ = meter.Float64Counter(
-		"shortener_http_requests_total",
-		metric.WithDescription("Total number of HTTP requests"),
-	)
-
-	m.ErrorsTotal, _ = meter.Float64Counter(
-		"shortener_http_errors_total",
-		metric.WithDescription("Total number of HTTP errors"),
+	m.ResponsesStatus, _ = meter.Float64Counter(
+		"http_responses_total",
+		metric.WithDescription("HTTP responses by status code"),
 	)
 
 	m.URLsCreated, _ = meter.Float64Counter(
@@ -66,8 +57,4 @@ func NewMetrics() *Metrics {
 	)
 
 	return m
-}
-
-func (m *Metrics) Handler() *prometheus.Exporter {
-	return m.exporter
 }

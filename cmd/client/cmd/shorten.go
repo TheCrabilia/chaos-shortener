@@ -8,22 +8,19 @@ import (
 )
 
 var (
-	server   string
-	url      string
-	repeat   int
-	parallel bool
-	silent   bool
+	repeat int
+	silent bool
 )
 
 var shortenCmd = &cobra.Command{
-	Use: "shorten",
+	Use:  "shorten <server> <url>",
+	Args: cobra.MinimumNArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		c := client.New(server)
+		c := client.New(args[0])
 
 		shortURLs, err := c.ShortenURL(&client.ShortenURLOpts{
-			URL:      url,
-			Repeat:   repeat,
-			Parallel: parallel,
+			URL:    args[1],
+			Repeat: repeat,
 		})
 		if err != nil {
 			return err
@@ -40,10 +37,7 @@ var shortenCmd = &cobra.Command{
 }
 
 func init() {
-	shortenCmd.Flags().StringVarP(&server, "server", "S", "http://localhost:8080", "server to connect to")
-	shortenCmd.Flags().StringVarP(&url, "url", "u", "", "url to shorten")
 	shortenCmd.Flags().IntVarP(&repeat, "repeat", "r", 1, "number of times to repeat the request")
-	shortenCmd.Flags().BoolVarP(&parallel, "parallel", "p", false, "send requests in parallel")
 	shortenCmd.Flags().BoolVarP(&silent, "silent", "s", false, "do not print the shortened URL")
 
 	shortenCmd.MarkFlagRequired("url")

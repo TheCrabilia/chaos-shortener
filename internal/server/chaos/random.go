@@ -11,7 +11,7 @@ func selectWeightedRandom(elements []FailureType, probabilities []float64) Failu
 
 	randomNumber := rand.Float64()
 
-	for i := 0; i < len(cumulativeProbabilities); i++ {
+	for i := range cumulativeProbabilities {
 		if randomNumber < cumulativeProbabilities[i] {
 			return elements[i]
 		}

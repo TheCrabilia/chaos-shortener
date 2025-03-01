@@ -29,7 +29,7 @@ type Injector struct {
 
 func NewInjector() *Injector {
 	i := &Injector{
-		maxLatency: time.Second * 2,
+		maxLatency: time.Second * 10,
 	}
 
 	return i

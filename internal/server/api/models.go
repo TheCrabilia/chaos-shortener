@@ -20,6 +20,7 @@ func (sr *ShortenRequest) Unmarshal(b []byte) error {
 }
 
 type ShortenResponse struct {
+	ID       string `json:"id"`
 	ShortURL string `json:"short_url"`
 }
 

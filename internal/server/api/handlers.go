@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -51,17 +52,20 @@ func (h *Handlers) ShortenURL() http.Handler {
 			return
 		}
 
-		shortURL, err := h.shortener.Shorten(r.Context(), fullURL(r), req.URL)
+		urlID, err := h.shortener.Shorten(r.Context(), req.URL)
 		if err != nil {
 			h.log.Error("failed to create shortened url", "error", err)
 			errorJSON(w, "failed to shorten url", http.StatusInternalServerError)
 			return
 		}
 
+		shortURL := fmt.Sprintf("%s/r/%s", fullURL(r), urlID)
+
 		h.log.Info("shortened", "url", req.URL, "short_url", shortURL)
 		h.metrics.URLsCreated.Add(r.Context(), 1)
 
 		resp := ShortenResponse{
+			ID:       urlID,
 			ShortURL: shortURL,
 		}
 

@@ -26,8 +26,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/bake-action@v6
         with:
           push: true
-          tags: |
-            ghcr.io/thecrabilia/chaos-shortener:latest

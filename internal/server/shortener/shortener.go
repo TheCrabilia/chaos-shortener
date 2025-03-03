@@ -26,15 +26,15 @@ func NewShortener(db *db.Queries) *Shortener {
 }
 
 // Shorten creates unique identifier for the given URL and saves it in database.
-// Returns full redirect URL.
-func (s *Shortener) Shorten(ctx context.Context, baseURL, redirectURL string) (string, error) {
+// Returns redirect URL ID.
+func (s *Shortener) Shorten(ctx context.Context, redirectURL string) (string, error) {
 	id := generateID()
 
 	if err := s.db.CreateURL(ctx, db.CreateURLParams{ID: id, Url: redirectURL}); err != nil {
 		return "", fmt.Errorf("failed to create url in db: %w", err)
 	}
 
-	return fmt.Sprintf("%s/r/%s", baseURL, id), nil
+	return id, nil
 }
 
 // RedirectURL gets original URL from database by shortened identifier.

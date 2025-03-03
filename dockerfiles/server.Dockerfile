@@ -1,14 +1,18 @@
-FROM golang:1.24-alpine AS builder
+FROM --platform=${BUILDPLATFORM} golang:1.24 AS builder
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ARG TARGETOS
 ARG TARGETARCH
+ARG BUILDPLATFORM
 
 WORKDIR /app
 
 COPY . .
 
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
-    GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o cshort ./cmd/server
+    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+    go build -o cshort ./cmd/server
 
 FROM alpine:3.21
 

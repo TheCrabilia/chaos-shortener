@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/TheCrabilia/chaos-shortener/internal/server/api"
 )
@@ -14,10 +15,7 @@ type ShortenURLOpts struct {
 }
 
 func (c *Client) ShortenURL(opts *ShortenURLOpts) ([]string, error) {
-	var (
-		results []string
-		errCh   = make(chan error)
-	)
+	var results []string
 
 	req := &api.ShortenRequest{
 		URL: opts.URL,
@@ -26,21 +24,25 @@ func (c *Client) ShortenURL(opts *ShortenURLOpts) ([]string, error) {
 	for range opts.Repeat {
 		resp, err := c.Request(http.MethodPost, "/shorten", req)
 		if err != nil {
-			errCh <- fmt.Errorf("failed to send request: %w", err)
+			return nil, fmt.Errorf("failed to send request: %w", err)
 		}
 		defer resp.Body.Close()
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			errCh <- fmt.Errorf("failed to read response body: %w", err)
+			return nil, fmt.Errorf("failed to read response body: %w", err)
 		}
 
 		var data api.ShortenResponse
 		if err := data.Unmarshal(body); err != nil {
-			errCh <- fmt.Errorf("failed to unmarshal response: %w", err)
+			return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 		}
 
-		results = append(results, data.ShortURL)
+		results = append(results, data.ID)
+
+		if opts.Repeat > 1 {
+			time.Sleep(time.Millisecond * 50)
+		}
 	}
 
 	return results, nil

@@ -18,7 +18,7 @@ var shortenCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		c := client.New(args[0])
 
-		shortURLs, err := c.ShortenURL(&client.ShortenURLOpts{
+		urlid, err := c.ShortenURL(&client.ShortenURLOpts{
 			URL:    args[1],
 			Repeat: repeat,
 		})
@@ -27,8 +27,8 @@ var shortenCmd = &cobra.Command{
 		}
 
 		if !silent {
-			for _, url := range shortURLs {
-				fmt.Println(url)
+			for _, id := range urlid {
+				fmt.Println(id)
 			}
 		}
 

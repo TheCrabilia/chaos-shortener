@@ -2,7 +2,7 @@ services:
   cshort:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: ./dockerfiles/server.Dockerfile
     environment:
       CSHORT_DATABASE: ${CSHORT_DATABASE}
       CSHORT_MIGRATIONS_PATH: db/migrations

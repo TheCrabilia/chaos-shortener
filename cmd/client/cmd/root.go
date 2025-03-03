@@ -18,4 +18,5 @@ func Execute() error {
 func init() {
 	rootCmd.AddCommand(chaosCmd)
 	rootCmd.AddCommand(shortenCmd)
+	rootCmd.AddCommand(redirectCmd)
 }

@@ -67,7 +67,7 @@ resource "helm_release" "cshort" {
   chart         = "../charts/chaos-shortener"
   namespace     = kubernetes_namespace_v1.chaos_shortener.metadata[0].name
   recreate_pods = true
-  values = [jsonencode({
+  values = [yamlencode({
     chaosShortener = {
       database = {
         host           = "cshort-pooler"
@@ -75,5 +75,14 @@ resource "helm_release" "cshort" {
         existingSecret = "cshort-db-credentials"
       }
     }
+  })]
+}
+
+resource "helm_release" "cshort_client" {
+  name      = "cs-client"
+  chart     = "../charts/chaos-shortener-client"
+  namespace = kubernetes_namespace_v1.chaos_shortener.metadata[0].name
+  values = [yamlencode({
+    replicaCount = 3
   })]
 }

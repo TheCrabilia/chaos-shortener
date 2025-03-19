@@ -24,9 +24,16 @@ func New(baseURL string) *Client {
 }
 
 func (c *Client) Request(method, endpoint string, body Serializable) (*http.Response, error) {
-	b, err := body.Marshal()
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal body: %w", err)
+	var (
+		b   []byte
+		err error
+	)
+
+	if body != nil {
+		b, err = body.Marshal()
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal body: %w", err)
+		}
 	}
 
 	req, err := http.NewRequest(method, c.baseURL+endpoint, bytes.NewReader(b))

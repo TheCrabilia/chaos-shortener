@@ -1,0 +1,99 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "chaos-shortener.fullname" . }}-slo-alert
+  labels:
+    {{- include "chaos-shortener.labels" . | nindent 4 }}
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: chaos-shortener
+      rules:
+        - alert: ShortenHandlerLatencySLONotMet
+          expr: >
+            (
+              sum(rate(http_request_duration_seconds_bucket{
+                handler="shorten",
+                otel_scope_name="cshort",
+                le="0.1"
+              }[1d]))
+              /
+              sum(rate(http_request_duration_seconds_count{
+                handler="shorten",
+                otel_scope_name="cshort"
+              }[1d]))
+            ) * 100 < 99.5
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: Shorten handler latency SLI is below the target
+            description: >
+              The latency SLI for handler "shorten" is below the target of 99.5%.
+              Current latency SLI value is {{ `{{ printf "%.2f" $value }}` }}%.
+        - alert: ShortenHandlerErrorSLONotMet
+          expr: >
+            (
+              sum(rate(http_responses_total{
+                handler="shorten",
+                http_response_status_code=~"^[123][0-9][0-9]$",
+                otel_scope_name="cshort"
+              }[1d]))
+              /
+              sum(rate(http_responses_total{
+                handler="shorten",
+                otel_scope_name="cshort"
+              }[1d]))
+            ) * 100 < 99.5
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: Shorten handler error SLI is below the target
+            description: >
+              The error SLI for handler "shorten" is below the target of 99.5%.
+              Current error SLI value is {{ `{{ printf "%.2f" $value }}` }}%.
+        - alert: RedirectHandlerLatencySLONotMet
+          expr: >
+            (
+              sum(rate(http_request_duration_seconds_bucket{
+                handler="redirect",
+                otel_scope_name="cshort",
+                le="0.1"
+              }[1d]))
+              /
+              sum(rate(http_request_duration_seconds_count{
+                handler="redirect",
+                otel_scope_name="cshort"
+              }[1d]))
+            ) * 100 < 99.5
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: Redirect handler latency SLI is below the target
+            description: >
+              The latency SLI for handler "redirect" is below the target of 99.5%.
+              Current latency SLI value is {{ `{{ printf "%.2f" $value }}` }}%.
+        - alert: RedirectHandlerErrorSLONotMet
+          expr: >
+            (
+              sum(rate(http_responses_total{
+                handler="redirect",
+                http_response_status_code=~"^[123][0-9][0-9]$",
+                otel_scope_name="cshort"
+              }[1d]))
+              /
+              sum(rate(http_responses_total{
+                handler="redirect",
+                otel_scope_name="cshort"
+              }[1d]))
+            ) * 100 < 99.5
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: Redirect handler error SLI is below the target
+            description: >
+              The error SLI for handler "redirect" is below the target of 99.5%.
+              Current error SLI value is {{ `{{ printf "%.2f" $value }}` }}%.

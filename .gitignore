@@ -28,3 +28,4 @@ tmp/
 .terraform/
 terraform.tfstate*
 terraform.auto.tfvars
+.terraform.lock.hcl

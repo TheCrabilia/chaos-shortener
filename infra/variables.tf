@@ -4,16 +4,11 @@ locals {
   }
 }
 
-variable "cp_host" {
-  type = string
-}
-
-variable "cp_username" {
+variable "telegram_api_key" {
   type      = string
   sensitive = true
 }
 
-variable "cp_password" {
-  type      = string
-  sensitive = true
+variable "telegram_chat_id" {
+  type = number
 }

@@ -1,4 +1,5 @@
 # chaos-shortener
+
 URL shortener pet app with failure simulation tooling
 
 ```mermaid
@@ -26,3 +27,37 @@ flowchart LR
         GRAF -.-> PROM
     end
 ```
+
+## Metrics
+
+Chaos shortener service exposes the following Prometheus metrics:
+
+| Name                          | Type      | Unit    | Description                            |
+| ----------------------------- | --------- | ------- | -------------------------------------- |
+| http_request_duration_seconds | Histogram | seconds | Duration of HTTP requests              |
+| http_responses_total          | Counter   |         | Total number of HTTP requests          |
+| shortener_urls_created_total  | Counter   |         | Total number of shortened URLs created |
+| shortener_redirects_total     | Counter   |         | Total number of redirects performed    |
+
+## Service Level Indicators
+
+### Request latency
+
+1. Request latency for `shorten` handler:
+
+   ```promql
+   (
+       sum(rate(http_request_duration_seconds_bucket{
+            handler="shorten",
+            otel_scope_name="cshort",
+            le="0.05"
+        }[1h]))
+        /
+        sum(rate(http_request_duration_seconds_count{
+            handler="shorten",
+            otel_scope_name="cshort"
+        }[1h]))
+   ) * 100
+   ```
+
+2. Request latency for `redirect` handler:

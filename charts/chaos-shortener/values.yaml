@@ -10,7 +10,7 @@ chaosShortener:
 replicaCount: 1
 
 image:
-  repository: ghcr.io/thecrabilia/chaos-shortener
+  repository: ghcr.io/thecrabilia/chaos-shortener/server
   pullPolicy: Always
   tag: latest
 

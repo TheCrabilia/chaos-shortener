@@ -8,18 +8,21 @@ group "default" {
 
 target "_common" {
   platforms = ["linux/amd64", "linux/arm64"]
+  labels = {
+    "org.opencontainers.image.source" = "https://github.com/TheCrabilia/chaos-shortener"
+  }
 }
 
 target "server" {
   inherits = ["_common"]
   context = "."
   dockerfile = "./dockerfiles/server.Dockerfile"
-  tags = ["${REGISTRY}/chaos-shortener:latest"]
+  tags = ["${REGISTRY}/chaos-shortener/server:latest"]
 }
 
 target "client" {
   inherits = ["_common"]
   context = "."
   dockerfile = "./dockerfiles/client.Dockerfile"
-  tags = ["${REGISTRY}/cs-client:latest"]
+  tags = ["${REGISTRY}/chaos-shortener/client:latest"]
 }

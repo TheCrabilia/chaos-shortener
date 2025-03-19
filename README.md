@@ -43,21 +43,89 @@ Chaos shortener service exposes the following Prometheus metrics:
 
 ### Request latency
 
-1. Request latency for `shorten` handler:
+```promql
+(
+    sum(rate(http_request_duration_seconds_bucket{
+        handler="$handler",
+        otel_scope_name="cshort",
+        le="0.1"
+    }[$interval]))
+    /
+    sum(rate(http_request_duration_seconds_count{
+        handler="$handler",
+        otel_scope_name="cshort"
+    }[$interval]))
+) * 100
+```
 
-   ```promql
-   (
-       sum(rate(http_request_duration_seconds_bucket{
-            handler="shorten",
+### Error rate
+
+```promql
+(
+    sum(rate(http_responses_total{
+        handler="$handler",
+        http_response_status_code=~"^[123][0-9][0-9]$",
+        otel_scope_name="cshort"
+    }[$interval]))
+    /
+    sum(rate(http_responses_total{
+        handler="$handler",
+        otel_scope_name="cshort"
+    }[$interval]))
+) * 100
+```
+
+## Service Level Objectives
+
+Both request latency and error rate SLIs should have values above 99.5%,
+in other words, SLO for both SLIs is equal to 99.5%.
+
+## Error budget
+
+Error budget for latency SLO is defined by the following query:
+
+```promql
+clamp_min((
+    (
+        sum(rate(http_request_duration_seconds_bucket{
+            handler="$handler",
             otel_scope_name="cshort",
-            le="0.05"
-        }[1h]))
+            le="0.1"
+        }[$interval])) * 100
         /
         sum(rate(http_request_duration_seconds_count{
-            handler="shorten",
+            handler="$handler",
             otel_scope_name="cshort"
-        }[1h]))
-   ) * 100
-   ```
+        }[$interval])) - $target
+    )
+    /
+    (100 - $target)
+) * 100, 0)
+```
 
-2. Request latency for `redirect` handler:
+But the error budget for error rate SLO is defined using this query:
+
+```promql
+clamp_min((
+    (
+        sum(rate(http_responses_total{
+            handler="$handler",
+            http_response_status_code=~"^[123][0-9][0-9]$",
+            otel_scope_name="cshort"
+        }[$interval])) * 100
+        /
+        sum(rate(http_responses_total{
+            handler="$handler",
+            otel_scope_name="cshort"
+        }[$interval])) - $target
+    )
+    /
+    (100 - $target)
+) * 100, 0)
+```
+
+## Alerts
+
+There are 4 alert rules defined in total, 2 rules for each handler. First triggers when handler request latency SLI
+drops less then 99.5%, and the second one triggers when hander error rate SLI drops below 99.5%. All alert rules are
+defined [here](./charts/chaos-shortener/templates/prometheusrule.yaml).
